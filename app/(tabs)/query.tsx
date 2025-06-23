@@ -156,7 +156,9 @@ const QueryScreen = () => {
       {attachedDocument && <Text style={styles.attachmentText}>Document: {attachedDocument.name}</Text>}
       {attachedImage && <Text style={styles.attachmentText}>Image: {attachedImage.fileName || attachedImage.uri}</Text>}
 
-      <Button title="Submit Query" onPress={handleSubmitQuery} />
+      <TouchableOpacity style={styles.submitButton} onPress={handleSubmitQuery}>
+        <Text style={styles.submitButtonText}>Submit Query</Text>
+      </TouchableOpacity>
 
       {/* This section would display existing queries, fetched dynamically */} 
       <Text style={styles.sectionTitle}>Your Queries (Status: Pending, In Review, Resolved)</Text>
@@ -219,10 +221,15 @@ return;
 
 const styles = StyleSheet.create({
   queryItem: {
-    backgroundColor: '#f0f0f0',
-    padding: 10,
-    marginVertical: 5,
-    borderRadius: 5,
+    backgroundColor: '#fff',
+    padding: 15,
+    marginVertical: 8,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.20,
+    shadowRadius: 1.41,
+    elevation: 2,
   },
   queryTitle: {
     fontSize: 16,
@@ -240,6 +247,7 @@ const styles = StyleSheet.create({
   profileSection: {
     alignItems: 'center',
     marginTop: 20,
+    paddingTop: 40, // Add padding to account for status bar
     marginBottom: 20,
   },
   profileImage: {
@@ -273,14 +281,24 @@ const styles = StyleSheet.create({
 
   attachmentContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     marginTop: 20,
     marginBottom: 10,
+    paddingHorizontal: 10,
   },
   attachButton: {
     backgroundColor: '#007AFF',
-    padding: 10,
-    borderRadius: 5,
+    padding: 12,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    marginHorizontal: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
+    elevation: 3,
   },
   attachButtonText: {
     color: '#fff',
@@ -295,15 +313,38 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: '#fff',
     padding: 15,
-    borderRadius: 8,
+    borderRadius: 20,
     marginBottom: 15,
     fontSize: 16,
     borderWidth: 1,
     borderColor: '#ddd',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+    elevation: 2,
   },
   textArea: {
     height: 100,
     textAlignVertical: 'top',
+  },
+  submitButton: {
+    backgroundColor: '#007AFF',
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  submitButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   sectionTitle: {
     fontSize: 18,
