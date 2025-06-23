@@ -17,7 +17,7 @@ const QueryScreen = () => {
     }
   };
 
-  const [queryType, setQueryType] = useState<'public' | 'personal'>('public');
+  const queryType = 'personal'; // Default to personal as public option is removed
   const pickDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -98,7 +98,7 @@ const QueryScreen = () => {
       const { error } = await supabase.from('queries').insert({
         title,
         description,
-        type: queryType,
+        type: 'personal', // Always 'personal' as public option is removed
         status: 'Pending', // Initial status
         user_id: userData?.id, // You would get this from authenticated user
         attached_document: documentUri,
@@ -109,7 +109,7 @@ const QueryScreen = () => {
         throw error;
       }
 
-      Alert.alert('Success', `Your ${queryType} query has been submitted!`);
+      Alert.alert('Success', `Your query has been submitted!`);
       setTitle('');
       setDescription('');
       setAttachedDocument(null);
@@ -128,20 +128,7 @@ const QueryScreen = () => {
       </View>
       <Text style={styles.title}>Submit a Query</Text>
 
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tabButton, queryType === 'public' && styles.activeTabButton]}
-          onPress={() => setQueryType('public')}
-        >
-          <Text style={[styles.tabButtonText, queryType === 'public' && styles.activeTabButtonText]}>Public Queries</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabButton, queryType === 'personal' && styles.activeTabButton]}
-          onPress={() => setQueryType('personal')}
-        >
-          <Text style={[styles.tabButtonText, queryType === 'personal' && styles.activeTabButtonText]}>Personal Queries</Text>
-        </TouchableOpacity>
-      </View>
+
 
       <TextInput
         style={styles.input}
@@ -157,8 +144,6 @@ const QueryScreen = () => {
         multiline
         numberOfLines={4}
       />
-      <Button title="Submit Query" onPress={handleSubmitQuery} />
-
       <View style={styles.attachmentContainer}>
         <TouchableOpacity style={styles.attachButton} onPress={pickDocument}>
           <Text style={styles.attachButtonText}>Attach PDF</Text>
@@ -171,7 +156,9 @@ const QueryScreen = () => {
       {attachedDocument && <Text style={styles.attachmentText}>Document: {attachedDocument.name}</Text>}
       {attachedImage && <Text style={styles.attachmentText}>Image: {attachedImage.fileName || attachedImage.uri}</Text>}
 
-      {/* This section would display existing queries, fetched dynamically */}
+      <Button title="Submit Query" onPress={handleSubmitQuery} />
+
+      {/* This section would display existing queries, fetched dynamically */} 
       <Text style={styles.sectionTitle}>Your Queries (Status: Pending, In Review, Resolved)</Text>
       {queries.length > 0 ? (
         <ScrollView>
@@ -283,29 +270,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: 'center',
   },
-  tabContainer: {
-    flexDirection: 'row',
-    marginBottom: 20,
-    borderRadius: 8,
-    backgroundColor: '#e0e0e0',
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderRadius: 8,
-  },
-  activeTabButton: {
-    backgroundColor: '#007AFF',
-  },
-  tabButtonText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  activeTabButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
+
   attachmentContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
