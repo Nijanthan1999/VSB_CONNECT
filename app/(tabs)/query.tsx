@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useState } from 'react';
-import { Alert, Button, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const profileImage = require('../../assets/images/profile.png');
 
@@ -245,10 +245,17 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   profileSection: {
+    flexDirection: 'column',
     alignItems: 'center',
-    marginTop: 20,
-    paddingTop: 40, // Add padding to account for status bar
     marginBottom: 20,
+  },
+  headerBorder: {
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    borderWidth: 1,
+    borderColor: 'black',
+    overflow: 'hidden',
+    paddingBottom: 10,
   },
   profileImage: {
     width: 100,
@@ -262,7 +269,9 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: '#f0f2f5',
+    paddingVertical: 20,
+    paddingHorizontal: 10,
+    backgroundColor: '#f0f0f0',
   },
   title: {
     fontSize: 24,
@@ -281,10 +290,8 @@ const styles = StyleSheet.create({
 
   attachmentContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 20,
-    marginBottom: 10,
-    paddingHorizontal: 10,
+    justifyContent: 'space-around',
+    marginVertical: 10,
   },
   attachButton: {
     backgroundColor: '#007AFF',
@@ -311,37 +318,27 @@ const styles = StyleSheet.create({
     color: '#555',
   },
   input: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 20,
-    marginBottom: 15,
-    fontSize: 16,
+    height: 50,
+    borderColor: '#ccc',
     borderWidth: 1,
-    borderColor: '#ddd',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.41,
-    elevation: 2,
+    borderRadius: 20,
+    paddingHorizontal: 15,
+    marginVertical: 8,
+    backgroundColor: '#fff',
+    fontSize: 16,
   },
   textArea: {
     height: 100,
     textAlignVertical: 'top',
   },
   submitButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#800080',
     padding: 15,
     borderRadius: 20,
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 20,
-    width: '80%',
+    marginVertical: 10,
+    width: '60%',
     alignSelf: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
   },
   submitButtonText: {
     color: '#fff',
@@ -351,9 +348,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginTop: 30,
-    marginBottom: 15,
-  },
+    marginVertical: 15,
+    color: '#333',
+  }
 });
 
 export default QueryScreen;
