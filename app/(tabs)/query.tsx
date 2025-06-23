@@ -331,10 +331,12 @@ const styles = StyleSheet.create({
   submitButton: {
     backgroundColor: '#007AFF',
     padding: 15,
-    borderRadius: 10,
+    borderRadius: 20,
     alignItems: 'center',
     marginTop: 20,
     marginBottom: 20,
+    width: '80%',
+    alignSelf: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
