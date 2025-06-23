@@ -25,7 +25,7 @@ const RegisterScreen = () => {
       await AsyncStorage.setItem('userData', JSON.stringify(userData));
 
       // Save to Supabase
-      const { data, error } = await supabase.from('users').insert([userData]);
+      const { error } = await supabase.from('users').insert([userData]);
 
       if (error) {
         throw error;

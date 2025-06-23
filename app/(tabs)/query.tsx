@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as DocumentPicker from 'expo-document-picker';
-import * as ImagePicker from 'expo-image-picker';
+// import * as DocumentPicker from 'expo-document-picker'; // Not used
+// import * as ImagePicker from 'expo-image-picker'; // Not used
 import React, { useEffect, useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -17,44 +17,6 @@ const QueryScreen = () => {
     }
   };
 
-  const queryType = 'personal'; // Default to personal as public option is removed
-  const pickDocument = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: 'application/pdf',
-        copyToCacheDirectory: false,
-      });
-
-      if (result.canceled === false) {
-        setAttachedDocument(result.assets[0]);
-      } else {
-        setAttachedDocument(null);
-      }
-    } catch (err) {
-      console.error('Document picking failed', err);
-      Alert.alert('Error', 'Failed to pick document.');
-    }
-  };
-
-  const pickImage = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 1,
-      });
-
-      if (result.canceled === false) {
-        setAttachedImage(result.assets[0]);
-      } else {
-        setAttachedImage(null);
-      }
-    } catch (err) {
-      console.error('Image picking failed', err);
-      Alert.alert('Error', 'Failed to pick image.');
-    }
-  };
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [userData, setUserData] = useState<any>(null);
@@ -178,46 +140,6 @@ const QueryScreen = () => {
     </ScrollView>
   );
 };
-
-  const pickDocument = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: 'application/pdf',
-        copyToCacheDirectory: false,
-      });
-
-      if (result.canceled === false) {
-        setAttachedDocument(result.assets[0]);
-      } else {
-return;
-      }
-    } catch (err) {
-      console.error('Document picking failed', err);
-      Alert.alert('Error', 'Failed to pick document.');
-    }
-  };
-
-  const pickImage = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 1,
-      });
-
-      if (result.canceled === false) {
-        if (setAttachedImage) {
-          setAttachedImage && setAttachedImage(result.assets[0]);
-        }
-      } else {
-        return;
-      }
-    } catch (err) {
-      console.error('Image picking failed', err);
-      Alert.alert('Error', 'Failed to pick image.');
-    }
-  };
 
 const styles = StyleSheet.create({
   queryItem: {
