@@ -2,22 +2,66 @@ import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
+import { decode } from 'base64-arraybuffer';
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, ScrollView, StyleSheet, View, ActivityIndicator, Pressable, Animated } from 'react-native';
+import { ThemedView } from '@/components/ThemedView';
+import { ThemedText } from '@/components/ThemedText';
+import { ThemedButton } from '@/components/ui/ThemedButton';
+import { ThemedTextInput } from '@/components/ui/ThemedTextInput';
 
 const profileImage = require('../../assets/images/profile.png');
 
 const QueryScreen = () => {
-  const fetchQueries = async () => {
-    const { data, error } = await supabase.from('queries').select('*');
-    if (error) {
-      console.error('Error fetching queries:', error);
-    } else {
-      setQueries(data);
+  // State management for form inputs and loading states
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [userData, setUserData] = useState<any>(null);
+  const [attachedDocument, setAttachedDocument] = useState<any>(null);
+  const [attachedImage, setAttachedImage] = useState<any>(null);
+  const [checkedDocument, setCheckedDocument] = useState(false);
+  const [checkedImage, setCheckedImage] = useState(false);
+  const [submitScale] = useState(new Animated.Value(1));
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+    // Upload file to Supabase Storage
+  const uploadFile = async (uri: string, bucket: string, path: string) => {
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const reader = new FileReader();
+      
+      return new Promise((resolve, reject) => {
+        reader.onload = async () => {
+          const base64 = reader.result?.toString().split(',')[1];
+          if (!base64) {
+            reject(new Error('Failed to convert file to base64'));
+            return;
+          }
+
+          const { data, error } = await supabase.storage
+            .from(bucket)
+            .upload(path, decode(base64), { contentType: blob.type });
+
+          if (error) {
+            reject(error);
+            return;
+          }
+
+          const { data: { publicUrl } } = supabase.storage
+            .from(bucket)
+            .getPublicUrl(path);
+
+          resolve(publicUrl);
+        };
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+      });
+    } catch (err) {
+      throw err;
     }
   };
 
-  const queryType = 'personal'; // Default to personal as public option is removed
   const pickDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -55,16 +99,10 @@ const QueryScreen = () => {
       Alert.alert('Error', 'Failed to pick image.');
     }
   };
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [userData, setUserData] = useState<any>(null);
-  const [queries, setQueries] = useState<any[]>([]);
-  const [attachedDocument, setAttachedDocument] = useState<any>(null);
-  const [attachedImage, setAttachedImage] = useState<any>(null);
+
 
   useEffect(() => {
     loadUserData();
-    fetchQueries();
   }, []);
 
   const loadUserData = async () => {
@@ -79,278 +117,292 @@ const QueryScreen = () => {
   };
 
   const handleSubmitQuery = async () => {
-    if (!title || !description) {
-      Alert.alert('Error', 'Please fill in all fields.');
+    if (!title || !description || !userData) {
+      setError('Please fill in all fields and ensure you\'re logged in.');
       return;
     }
 
-    let documentUri = null;
-    if (attachedDocument) {
-      documentUri = attachedDocument.uri;
-    }
-
-    let imageUri = null;
-    if (attachedImage) {
-      imageUri = attachedImage.uri;
-    }
+    setIsLoading(true);
+    setError('');
 
     try {
+      let attachmentUrls = [];
+
+      // Upload PDF if attached and checked
+      if (attachedDocument && checkedDocument) {
+        const pdfUrl = await uploadFile(
+          attachedDocument.uri,
+          'attachments-mobile',
+          `pdfs/${Date.now()}-${attachedDocument.name}`
+        );
+        attachmentUrls.push(pdfUrl);
+      }
+
+      // Upload Image if attached and checked
+      if (attachedImage && checkedImage) {
+        const imageUrl = await uploadFile(
+          attachedImage.uri,
+          'attachments-mobile',
+          `images/${Date.now()}-${attachedImage.uri.split('/').pop()}`
+        );
+        attachmentUrls.push(imageUrl);
+      }
+
+      // Insert query with attachments
       const { error } = await supabase.from('queries').insert({
         title,
         description,
+        name: userData.name,
+        phone: userData.phone,
+        attachment_url: attachmentUrls.join(','),
+        created_at: new Date().toISOString(),
         type: 'personal', // Always 'personal' as public option is removed
-        status: 'Pending', // Initial status
-        user_id: userData?.id, // You would get this from authenticated user
-        attached_document: documentUri,
-        attached_image: imageUri,
+        status: 'Pending' // Initial status
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
-      Alert.alert('Success', `Your query has been submitted!`);
+      // Reset form
       setTitle('');
       setDescription('');
       setAttachedDocument(null);
       setAttachedImage(null);
-      fetchQueries(); // Refresh queries after submission
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to submit query: ' + error.message);
+      Alert.alert('Success', 'Query submitted successfully!');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to submit query');
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const animateSubmit = () => {
+    Animated.sequence([
+      Animated.timing(submitScale, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true
+      }),
+      Animated.spring(submitScale, {
+        toValue: 1.05,
+        useNativeDriver: true,
+        speed: 30,
+        bounciness: 12
+      }),
+      Animated.spring(submitScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 25,
+        bounciness: 5
+      })
+    ]).start();
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.profileSection}>
-        <Image source={profileImage} style={styles.profileImage} />
-        <Text style={styles.greetingText}>Hi, {userData?.name || 'User'}</Text>
-      </View>
-      <Text style={styles.title}>Submit a Query</Text>
+    <ThemedView style={styles.container}>
+      <ScrollView style={styles.scrollView}>
+        {/* Profile Section */}
+        <View style={styles.profileSection}>
+          <Image source={profileImage} style={styles.profileImage} />
+          <ThemedText style={styles.welcomeText}>Hi, {userData?.name || "User"}</ThemedText>
+          <ThemedText style={{fontSize: 22, fontWeight: '700', textAlign: 'center', marginVertical: 12}}>Enter Query Details</ThemedText>
+          <ThemedText>{userData?.name ? `Welcome, ${userData.name}` : 'Welcome'}</ThemedText>
+        </View>
 
+        {/* Error Message */}
+        {error ? (
+          <ThemedText style={styles.errorText}>{error}</ThemedText>
+        ) : null}
 
+        {/* Query Form */}
+        <View style={[styles.formContainer, styles.cardStyle]}>
+          <ThemedTextInput
+            placeholder="Query Title"
+            value={title}
+            onChangeText={setTitle}
+            style={[styles.input, styles.inputStyle]}
+          />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Query Title"
-        value={title}
-        onChangeText={setTitle}
-      />
-      <TextInput
-        style={[styles.input, styles.textArea]}
-        placeholder="Query Description"
-        value={description}
-        onChangeText={setDescription}
-        multiline
-        numberOfLines={4}
-      />
-      <View style={styles.attachmentContainer}>
-        <TouchableOpacity style={styles.attachButton} onPress={pickDocument}>
-          <Text style={styles.attachButtonText}>Attach PDF</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.attachButton} onPress={pickImage}>
-          <Text style={styles.attachButtonText}>Attach Image</Text>
-        </TouchableOpacity>
-      </View>
+          <ThemedTextInput
+            placeholder="Query Description"
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            numberOfLines={4}
+            style={[styles.textArea, styles.inputStyle]}
+          />
 
-      {attachedDocument && <Text style={styles.attachmentText}>Document: {attachedDocument.name}</Text>}
-      {attachedImage && <Text style={styles.attachmentText}>Image: {attachedImage.fileName || attachedImage.uri}</Text>}
-
-      <TouchableOpacity style={styles.submitButton} onPress={handleSubmitQuery}>
-        <Text style={styles.submitButtonText}>Submit Query</Text>
-      </TouchableOpacity>
-
-      {/* This section would display existing queries, fetched dynamically */} 
-      <Text style={styles.sectionTitle}>Your Queries (Status: Pending, In Review, Resolved)</Text>
-      {queries.length > 0 ? (
-        <ScrollView>
-          {queries.map((query) => (
-            <View key={query.id} style={styles.queryItem}>
-              <Text style={styles.queryTitle}>{query.title}</Text>
-              <Text style={styles.queryDescription}>{query.description}</Text>
-              <Text style={styles.queryStatus}>Status: {query.status}</Text>
+          {/* Attachment Buttons */}
+          <View style={styles.attachmentContainer}>
+            <View style={styles.attachmentWrapper}>
+              <ThemedButton
+                onPress={pickDocument}
+                style={[styles.attachButton, styles.cardStyle]}
+                title={attachedDocument ? 'PDF Selected' : 'Attach PDF'}
+                textColor={styles.buttonText.color}
+              />
+              {attachedDocument && (
+                <Pressable 
+                  style={[styles.checkbox, checkedDocument && styles.checkboxChecked]}
+                  onPress={() => setCheckedDocument(!checkedDocument)}
+                >
+                  {checkedDocument && <ThemedText style={styles.checkmark}>✓</ThemedText>}
+                </Pressable>
+              )}
             </View>
-          ))}
-        </ScrollView>
-      ) : (
-        <Text>No queries submitted yet.</Text>
-      )}
-    </ScrollView>
+            <View style={styles.attachmentWrapper}>
+              <ThemedButton
+                onPress={pickImage}
+                style={[styles.attachButton, styles.cardStyle]}
+                title={attachedImage ? 'Image Selected' : 'Attach Image'}
+                textColor={styles.buttonText.color}
+              />
+              {attachedImage && (
+                <Pressable 
+                  style={[styles.checkbox, checkedImage && styles.checkboxChecked]}
+                  onPress={() => setCheckedImage(!checkedImage)}
+                >
+                  {checkedImage && <ThemedText style={styles.checkmark}>✓</ThemedText>}
+                </Pressable>
+              )}
+            </View>
+          </View>
+
+          {/* Submit Button */}
+          <Animated.View style={[{ transform: [{ scale: submitScale }] }]}>
+            <ThemedButton
+              onPress={() => {
+                animateSubmit();
+                handleSubmitQuery();
+              }}
+              style={[styles.submitButton]}
+              textColor="#FFFFFF"
+              disabled={isLoading}
+              title={isLoading ? 'Submitting...' : 'Submit Query'}
+            />
+          </Animated.View>
+
+          {isLoading && (
+            <ActivityIndicator style={styles.loader} size="large" />
+          )}
+        </View>
+      </ScrollView>
+    </ThemedView>
   );
 };
 
-  const pickDocument = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: 'application/pdf',
-        copyToCacheDirectory: false,
-      });
-
-      if (result.canceled === false) {
-        setAttachedDocument(result.assets[0]);
-      } else {
-return;
-      }
-    } catch (err) {
-      console.error('Document picking failed', err);
-      Alert.alert('Error', 'Failed to pick document.');
-    }
-  };
-
-  const pickImage = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 1,
-      });
-
-      if (result.canceled === false) {
-        if (setAttachedImage) {
-          setAttachedImage && setAttachedImage(result.assets[0]);
-        }
-      } else {
-        return;
-      }
-    } catch (err) {
-      console.error('Image picking failed', err);
-      Alert.alert('Error', 'Failed to pick image.');
-    }
-  };
-
 const styles = StyleSheet.create({
-  queryItem: {
-    backgroundColor: '#fff',
-    padding: 15,
-    marginVertical: 8,
-    borderRadius: 20,
+  cardStyle: {
+    borderRadius: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.20,
-    shadowRadius: 1.41,
-    elevation: 2,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+    backgroundColor: '#fff',
   },
-  queryTitle: {
+  buttonText: {
+    color: '#000',
     fontSize: 16,
-    fontWeight: 'bold',
-  },
-  queryDescription: {
-    fontSize: 14,
-    marginTop: 5,
-  },
-  queryStatus: {
-    fontSize: 12,
-    fontStyle: 'italic',
-    marginTop: 5,
-  },
-  profileSection: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  headerBorder: {
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    borderWidth: 1,
-    borderColor: 'black',
-    overflow: 'hidden',
-    paddingBottom: 10,
-  },
-  profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
-  greetingText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginTop: 10,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   container: {
     flex: 1,
-    paddingVertical: 20,
-    paddingHorizontal: 10,
-    backgroundColor: '#f0f0f0',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-  screenTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-
-  attachmentContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginVertical: 10,
-  },
-  attachButton: {
-    backgroundColor: '#007AFF',
-    padding: 12,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+  scrollView: {
     flex: 1,
-    marginHorizontal: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.22,
-    shadowRadius: 2.22,
-    elevation: 3,
   },
-  attachButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+  profileSection: {
+    alignItems: 'center',
+    paddingTop: 20,
+    paddingBottom: 20,
   },
-  attachmentText: {
-    marginTop: 5,
-    marginLeft: 20,
-    fontSize: 14,
-    color: '#555',
+  profileImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+  },
+  welcomeText: {
+    fontSize: 18,
+    marginTop: 10,
+  },
+  formContainer: {
+    padding: 20,
+    margin: 15,
+  },
+  inputStyle: {
+    backgroundColor: '#f7fafc',
+    borderRadius: 8,
+    paddingHorizontal: 12,
   },
   input: {
-    height: 50,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    marginVertical: 8,
-    backgroundColor: '#fff',
-    fontSize: 16,
+    marginBottom: 15,
   },
   textArea: {
-    height: 100,
+    marginBottom: 15,
+    minHeight: 100,
     textAlignVertical: 'top',
   },
-  submitButton: {
-    backgroundColor: '#800080',
-    padding: 15,
-    borderRadius: 20,
+  attachmentContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  attachmentWrapper: {
+    flex: 0.48,
+    position: 'relative',
+  },
+  attachButton: {
+    width: '100%',
+    backgroundColor: '#f0f0f0',
+    paddingVertical: 12,
+  },
+  checkbox: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#6B46C1',
+    backgroundColor: '#fff',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: 10,
-    width: '60%',
-    alignSelf: 'center',
   },
-  submitButtonText: {
+  checkboxChecked: {
+    backgroundColor: '#6B46C1',
+  },
+  checkmark: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginVertical: 15,
-    color: '#333',
-  }
+  submitButton: {
+    marginTop: 10,
+    backgroundColor: '#EC4899',
+    paddingVertical: 15,
+    borderRadius: 12,
+    shadowColor: '#EC4899',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 6,
+  },
+  errorText: {
+    color: 'red',
+    textAlign: 'center',
+    marginVertical: 10,
+  },
+  loader: {
+    marginTop: 20,
+  },
 });
 
 export default QueryScreen;
